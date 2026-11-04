@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trading Journal</title>
+  <meta name="description" content="Log every trade and track win rate, profit factor and your equity curve.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="app">
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">↗</span>
+        <div>
+          <h1>Trading Journal</h1>
+          <p class="sub" id="subline">Every trade, logged. Every lesson, kept.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="sampleBtn" type="button">Load sample data</button>
+        <button class="btn ghost" id="exportBtn" type="button">Export</button>
+        <label class="btn ghost" for="importFile">Import<input type="file" id="importFile" accept="application/json" hidden></label>
+      </div>
+    </header>
+
+    <!-- KPIs -->
+    <section class="kpis" aria-label="Summary">
+      <article class="kpi hero-kpi">
+        <span class="kpi-label">Net P&amp;L</span>
+        <strong class="kpi-value" id="kNet">$0.00</strong>
+        <span class="kpi-foot" id="kNetFoot">No trades yet</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Win rate</span>
+        <strong class="kpi-value" id="kWin">–</strong>
+        <div class="meter" aria-hidden="true"><span id="kWinBar"></span></div>
+        <span class="kpi-foot" id="kWinFoot">0 W · 0 L</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Profit factor</span>
+        <strong class="kpi-value" id="kPF">–</strong>
+        <span class="kpi-foot">Gross wins ÷ gross losses</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Avg win / Avg loss</span>
+        <strong class="kpi-value small" id="kAvg">–</strong>
+        <span class="kpi-foot" id="kAvgFoot">Payoff ratio –</span>
+      </article>
+      <article class="kpi">
+        <span class="kpi-label">Best / Worst</span>
+        <strong class="kpi-value small" id="kBest">–</strong>
+        <span class="kpi-foot" id="kBestFoot">&nbsp;</span>
+      </article>
+    </section>
+
+    <!-- Chart + Form -->
+    <section class="main-grid">
+      <article class="panel chart-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Equity curve</h2>
+            <p class="muted">Cumulative P&amp;L after each trade</p>
+          </div>
+          <span class="pill" id="tradeCount">0 trades</span>
+        </div>
+        <div class="chart-wrap" id="chartWrap">
+          <svg id="chart" role="img" aria-label="Equity curve chart"></svg>
+          <div class="tooltip" id="tooltip" hidden></div>
+          <div class="empty" id="chartEmpty">
+            <span>📊</span>
+            <p>Log your first trade, or load sample data, to see your equity curve.</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel form-panel">
+        <div class="panel-head"><h2>Log a trade</h2></div>
+        <form id="tradeForm" autocomplete="off">
+          <div class="row">
+            <label>Date<input type="date" name="date" required></label>
+            <label>Ticker<input type="text" name="ticker" placeholder="TSLA" required maxlength="10"></label>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="Side">
+            <input type="radio" name="side" id="sideLong" value="long" checked><label for="sideLong">Long ↑</label>
+            <input type="radio" name="side" id="sideShort" value="short"><label for="sideShort">Short ↓</label>
+          </div>
+          <div class="row three">
+            <label>Shares<input type="number" name="shares" min="0" step="any" required placeholder="100"></label>
+            <label>Entry<input type="number" name="entry" min="0" step="any" required placeholder="250.00"></label>
+            <label>Exit<input type="number" name="exit" min="0" step="any" required placeholder="255.50"></label>
+          </div>
+          <div class="row">
+            <label>Fees<input type="number" name="fees" min="0" step="any" value="0"></label>
+            <label>Setup
+              <select name="setup">
+                <option>Opening range breakout</option>
+                <option>Bull flag</option>
+                <option>Breakout</option>
+                <option>Oversold bounce</option>
+                <option>News / catalyst</option>
+                <option>Other</option>
+              </select>
+            </label>
+          </div>
+          <label>Notes<textarea name="notes" rows="2" placeholder="What went right? What would you do differently?"></textarea></label>
+          <div class="preview" id="preview">P&amp;L preview: <strong>–</strong></div>
+          <button class="btn primary" type="submit">Add trade <span>→</span></button>
+        </form>
+      </article>
+    </section>
+
+    <!-- Trades table -->
+    <section class="panel table-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Trade log</h2>
+          <p class="muted">Newest first</p>
+        </div>
+        <input type="search" id="search" placeholder="Search ticker, setup, notes…" aria-label="Search trades">
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Ticker</th><th>Side</th><th class="num">Shares</th>
+              <th class="num">Entry</th><th class="num">Exit</th><th class="num">P&amp;L</th>
+              <th>Setup</th><th>Notes</th><th><span class="sr">Delete</span></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <p class="empty-row" id="tableEmpty">No trades yet.</p>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <a href="../portfolio/index.html">← Back to portfolio</a>
+      <span>Your trades are saved in this browser only. Use Export to back them up.</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="script.js"></script>
+</body>
+</html>
