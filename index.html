@@ -8,11 +8,12 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span></div>
+  <div class="gridlines" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
 
   <div class="app">
@@ -21,42 +22,42 @@
       <div class="brand">
         <span class="brand-mark">↗</span>
         <div>
-          <h1>Trading Journal</h1>
-          <p class="sub" id="subline">Every trade, logged. Every lesson, kept.</p>
+          <h1><span class="br">&lt;</span>TradingJournal<span class="br"> /&gt;</span></h1>
+          <p class="sub" id="subline"><span class="path">~/trading-journal</span> <span class="dollar">$</span> ./journal --live<span class="caret">▍</span></p>
         </div>
       </div>
       <div class="actions">
-        <button class="btn ghost" id="sampleBtn" type="button">Load sample data</button>
-        <button class="btn ghost" id="exportBtn" type="button">Export</button>
-        <label class="btn ghost" for="importFile">Import<input type="file" id="importFile" accept="application/json" hidden></label>
+        <button class="btn ghost" id="sampleBtn" type="button"><b>$</b> load --sample</button>
+        <button class="btn ghost" id="exportBtn" type="button"><b>$</b> export</button>
+        <label class="btn ghost" for="importFile"><b>$</b> import<input type="file" id="importFile" accept="application/json" hidden></label>
       </div>
     </header>
 
     <!-- KPIs -->
     <section class="kpis" aria-label="Summary">
       <article class="kpi hero-kpi">
-        <span class="kpi-label">Net P&amp;L</span>
+        <span class="kpi-label"><i>const</i> netPnl</span>
         <strong class="kpi-value" id="kNet">$0.00</strong>
         <span class="kpi-foot" id="kNetFoot">No trades yet</span>
       </article>
       <article class="kpi">
-        <span class="kpi-label">Win rate</span>
+        <span class="kpi-label"><i>const</i> winRate</span>
         <strong class="kpi-value" id="kWin">–</strong>
         <div class="meter" aria-hidden="true"><span id="kWinBar"></span></div>
         <span class="kpi-foot" id="kWinFoot">0 W · 0 L</span>
       </article>
       <article class="kpi">
-        <span class="kpi-label">Profit factor</span>
+        <span class="kpi-label"><i>const</i> profitFactor</span>
         <strong class="kpi-value" id="kPF">–</strong>
-        <span class="kpi-foot">Gross wins ÷ gross losses</span>
+        <span class="kpi-foot">// gross wins ÷ gross losses</span>
       </article>
       <article class="kpi">
-        <span class="kpi-label">Avg win / Avg loss</span>
+        <span class="kpi-label"><i>const</i> avgWin / avgLoss</span>
         <strong class="kpi-value small" id="kAvg">–</strong>
         <span class="kpi-foot" id="kAvgFoot">Payoff ratio –</span>
       </article>
       <article class="kpi">
-        <span class="kpi-label">Best / Worst</span>
+        <span class="kpi-label"><i>const</i> best / worst</span>
         <strong class="kpi-value small" id="kBest">–</strong>
         <span class="kpi-foot" id="kBestFoot">&nbsp;</span>
       </article>
@@ -65,42 +66,53 @@
     <!-- Chart + Form -->
     <section class="main-grid">
       <article class="panel chart-panel">
-        <div class="panel-head">
-          <div>
-            <h2>Equity curve</h2>
-            <p class="muted">Cumulative P&amp;L after each trade</p>
-          </div>
+        <div class="win-bar">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="file">equity_curve.svg</span>
           <span class="pill" id="tradeCount">0 trades</span>
         </div>
-        <div class="chart-wrap" id="chartWrap">
-          <svg id="chart" role="img" aria-label="Equity curve chart"></svg>
-          <div class="tooltip" id="tooltip" hidden></div>
-          <div class="empty" id="chartEmpty">
-            <span>📊</span>
-            <p>Log your first trade, or load sample data, to see your equity curve.</p>
+        <div class="panel-inner">
+          <div class="panel-head">
+            <div>
+              <h2>Equity curve</h2>
+              <p class="muted">// cumulative P&amp;L after each trade</p>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chartWrap">
+            <svg id="chart" role="img" aria-label="Equity curve chart"></svg>
+            <div class="tooltip" id="tooltip" hidden></div>
+            <div class="empty" id="chartEmpty">
+              <span class="empty-code">null</span>
+              <p>No data yet. Log your first trade, or run <code>load --sample</code>.</p>
+            </div>
           </div>
         </div>
       </article>
 
       <article class="panel form-panel">
-        <div class="panel-head"><h2>Log a trade</h2></div>
-        <form id="tradeForm" autocomplete="off">
+        <div class="win-bar">
+          <span class="lights"><i></i><i></i><i></i></span>
+          <span class="file">new_trade.js</span>
+          <span class="kbd-hint"><kbd>N</kbd></span>
+        </div>
+        <form id="tradeForm" class="panel-inner" autocomplete="off">
+          <p class="code-line"><i class="kw">const</i> trade = <i class="pun">{</i></p>
           <div class="row">
-            <label>Date<input type="date" name="date" required></label>
-            <label>Ticker<input type="text" name="ticker" placeholder="TSLA" required maxlength="10"></label>
+            <label>date:<input type="date" name="date" required></label>
+            <label>ticker:<input type="text" name="ticker" placeholder="TSLA" required maxlength="10"></label>
           </div>
           <div class="seg" role="radiogroup" aria-label="Side">
-            <input type="radio" name="side" id="sideLong" value="long" checked><label for="sideLong">Long ↑</label>
-            <input type="radio" name="side" id="sideShort" value="short"><label for="sideShort">Short ↓</label>
+            <input type="radio" name="side" id="sideLong" value="long" checked><label for="sideLong">"long" ↑</label>
+            <input type="radio" name="side" id="sideShort" value="short"><label for="sideShort">"short" ↓</label>
           </div>
           <div class="row three">
-            <label>Shares<input type="number" name="shares" min="0" step="any" required placeholder="100"></label>
-            <label>Entry<input type="number" name="entry" min="0" step="any" required placeholder="250.00"></label>
-            <label>Exit<input type="number" name="exit" min="0" step="any" required placeholder="255.50"></label>
+            <label>shares:<input type="number" name="shares" min="0" step="any" required placeholder="100"></label>
+            <label>entry:<input type="number" name="entry" min="0" step="any" required placeholder="250.00"></label>
+            <label>exit:<input type="number" name="exit" min="0" step="any" required placeholder="255.50"></label>
           </div>
           <div class="row">
-            <label>Fees<input type="number" name="fees" min="0" step="any" value="0"></label>
-            <label>Setup
+            <label>fees:<input type="number" name="fees" min="0" step="any" value="0"></label>
+            <label>setup:
               <select name="setup">
                 <option>Opening range breakout</option>
                 <option>Bull flag</option>
@@ -111,41 +123,72 @@
               </select>
             </label>
           </div>
-          <label>Notes<textarea name="notes" rows="2" placeholder="What went right? What would you do differently?"></textarea></label>
-          <div class="preview" id="preview">P&amp;L preview: <strong>–</strong></div>
-          <button class="btn primary" type="submit">Add trade <span>→</span></button>
+          <label>notes:<textarea name="notes" rows="2" placeholder="// what went right? what would you do differently?"></textarea></label>
+          <p class="code-line"><i class="pun">};</i></p>
+          <div class="preview" id="preview"><i class="kw">return</i> pnl: <strong>–</strong></div>
+          <button class="btn primary" type="submit"><span class="git">git commit -m "log trade"</span> <span>⏎</span></button>
         </form>
       </article>
     </section>
 
     <!-- Trades table -->
     <section class="panel table-panel">
-      <div class="panel-head">
-        <div>
-          <h2>Trade log</h2>
-          <p class="muted">Newest first</p>
-        </div>
-        <input type="search" id="search" placeholder="Search ticker, setup, notes…" aria-label="Search trades">
+      <div class="win-bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="file">trades.json</span>
+        <span class="kbd-hint"><kbd>/</kbd></span>
       </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th><th>Ticker</th><th>Side</th><th class="num">Shares</th>
-              <th class="num">Entry</th><th class="num">Exit</th><th class="num">P&amp;L</th>
-              <th>Setup</th><th>Notes</th><th><span class="sr">Delete</span></th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-        <p class="empty-row" id="tableEmpty">No trades yet.</p>
+      <div class="panel-inner">
+        <div class="panel-head">
+          <div>
+            <h2>Trade log</h2>
+            <p class="muted">// newest first</p>
+          </div>
+          <div class="search-wrap">
+            <span class="grep">grep</span>
+            <input type="search" id="search" placeholder="ticker, setup, notes…" aria-label="Search trades">
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>date</th><th>ticker</th><th>side</th><th class="num">shares</th>
+                <th class="num">entry</th><th class="num">exit</th><th class="num">pnl</th>
+                <th>setup</th><th>notes</th><th><span class="sr">Delete</span></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <p class="empty-row" id="tableEmpty">No trades yet.</p>
+        </div>
       </div>
     </section>
 
+    <!-- Console -->
+    <section class="panel console-panel">
+      <div class="win-bar">
+        <span class="lights"><i></i><i></i><i></i></span>
+        <span class="file">console.log</span>
+        <button class="clear-log" id="clearLog" type="button">clear</button>
+      </div>
+      <div class="console" id="console" aria-live="polite"></div>
+    </section>
+
     <footer class="foot">
-      <a href="../portfolio/index.html">← Back to portfolio</a>
-      <span>Your trades are saved in this browser only. Use Export to back them up.</span>
+      <a href="../portfolio/index.html">← cd ../portfolio</a>
+      <span>// trades are saved in this browser only. Run <code>export</code> to back them up.</span>
     </footer>
+  </div>
+
+  <!-- VS Code-style status bar -->
+  <div class="statusbar" aria-hidden="true">
+    <span class="sb-branch">⎇ main</span>
+    <span id="sbTrades">0 trades</span>
+    <span id="sbNet">net $0.00</span>
+    <span class="sb-hide-sm">localStorage ✓</span>
+    <span class="sb-hide-sm sb-keys"><kbd>N</kbd> new <kbd>/</kbd> search <kbd>Esc</kbd> exit</span>
+    <span class="sb-right" id="sbTime">--:--:--</span>
   </div>
 
   <div class="toast" id="toast" role="status" hidden></div>

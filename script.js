@@ -196,7 +196,29 @@ function renderTable() {
   $("tableEmpty").textContent = trades.length ? "No trades match your search." : "No trades yet.";
 }
 
-function renderAll() { renderStats(); renderChart(); renderTable(); }
+function renderAll() { renderStats(); renderChart(); renderTable(); renderStatus(); }
+
+// ============ Status bar ============
+function renderStatus() {
+  const net = trades.reduce((a, t) => a + pnlOf(t), 0);
+  $("sbTrades").textContent = `${trades.length} trade${trades.length === 1 ? "" : "s"}`;
+  $("sbNet").textContent = `net ${money(net, true)}`;
+}
+const tick = () => { $("sbTime").textContent = new Date().toLocaleTimeString("en-GB"); };
+tick();
+setInterval(tick, 1000);
+
+// ============ Console log ============
+function log(level, msg) {
+  const out = $("console");
+  const row = document.createElement("div");
+  const ts = new Date().toLocaleTimeString("en-GB");
+  row.innerHTML = `<span class="ts">[${ts}]</span><span class="lvl ${level}">${level.toUpperCase().padEnd(4, " ")}</span><span class="msg">${esc(msg)}</span>`;
+  out.appendChild(row);
+  out.scrollTop = out.scrollHeight;
+}
+$("clearLog").addEventListener("click", () => { $("console").innerHTML = ""; log("info", "console cleared"); });
+const tradeStr = (t) => `${t.ticker} ${t.side} ${t.shares} @ ${t.entry} → ${t.exit}`;
 
 // ============ Form ============
 const form = $("tradeForm");
@@ -222,7 +244,7 @@ form.addEventListener("input", () => {
   const t = readForm();
   const ok = [t.shares, t.entry, t.exit].every(Number.isFinite);
   const p = ok ? pnlOf(t) : null;
-  $("preview").innerHTML = `P&amp;L preview: <strong class="${ok ? cls(p) : ""}">${ok ? money(p, true) : "–"}</strong>`;
+  $("preview").innerHTML = `<i class="kw">return</i> pnl: <strong class="${ok ? cls(p) : ""}">${ok ? money(p, true) : "–"}</strong>`;
 });
 
 form.addEventListener("submit", (e) => {
@@ -235,8 +257,9 @@ form.addEventListener("submit", (e) => {
   const keepDate = form.date.value;
   form.reset();
   form.date.value = keepDate;
-  $("preview").innerHTML = "P&amp;L preview: <strong>–</strong>";
+  $("preview").innerHTML = '<i class="kw">return</i> pnl: <strong>–</strong>';
   toast(`${t.ticker} logged: ${money(pnlOf(t), true)}`);
+  log("ok", `INSERT ${tradeStr(t)}  pnl ${money(pnlOf(t), true)}`);
 });
 
 // ============ Delete with undo ============
@@ -247,7 +270,8 @@ $("tbody").addEventListener("click", (e) => {
   if (idx < 0) return;
   const [removed] = trades.splice(idx, 1);
   save(); renderAll();
-  toast(`Deleted ${removed.ticker} trade`, () => { trades.push(removed); save(); renderAll(); });
+  log("warn", `DELETE ${tradeStr(removed)}`);
+  toast(`Deleted ${removed.ticker} trade`, () => { trades.push(removed); save(); renderAll(); log("info", `ROLLBACK delete ${removed.ticker}`); });
 });
 
 $("search").addEventListener("input", renderTable);
@@ -288,7 +312,8 @@ $("sampleBtn").addEventListener("click", () => {
   }
   trades = trades.concat(batch);
   save(); animateNext = true; renderAll();
-  toast("Loaded 28 sample trades", () => { trades = trades.filter((t) => !batch.includes(t)); save(); renderAll(); });
+  log("info", `load --sample: inserted ${batch.length} sample trades`);
+  toast("Loaded 28 sample trades", () => { trades = trades.filter((t) => !batch.includes(t)); save(); renderAll(); log("info", "ROLLBACK sample data"); });
 });
 
 $("exportBtn").addEventListener("click", () => {
@@ -298,6 +323,7 @@ $("exportBtn").addEventListener("click", () => {
   a.download = `trading-journal-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
+  log("ok", `export: wrote ${trades.length} trades to ${a.download}`);
 });
 
 $("importFile").addEventListener("change", async (e) => {
@@ -309,7 +335,11 @@ $("importFile").addEventListener("change", async (e) => {
     const valid = data.filter((t) => t && t.date && t.ticker && [t.shares, t.entry, t.exit].every(Number.isFinite));
     trades = valid; save(); animateNext = true; renderAll();
     toast(`Imported ${valid.length} trades`);
-  } catch { toast("That file isn't a valid journal export."); }
+    log("ok", `import: loaded ${valid.length} trades from ${file.name}`);
+  } catch {
+    toast("That file isn't a valid journal export.");
+    log("err", `import: ${file.name} is not a valid journal export`);
+  }
   e.target.value = "";
 });
 
@@ -317,4 +347,16 @@ $("importFile").addEventListener("change", async (e) => {
 let rz;
 window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderChart, 150); });
 
+// ============ Keyboard shortcuts ============
+document.addEventListener("keydown", (e) => {
+  const typing = e.target.closest("input, textarea, select");
+  if (e.key === "Escape" && typing) { e.target.blur(); return; }
+  if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "n" || e.key === "N") { e.preventDefault(); form.ticker.focus(); form.ticker.scrollIntoView({ block: "center", behavior: "smooth" }); }
+  if (e.key === "/") { e.preventDefault(); $("search").focus(); $("search").scrollIntoView({ block: "center", behavior: "smooth" }); }
+});
+
 renderAll();
+log("info", "journal v1.0 booted");
+log("ok", `localStorage: ${trades.length} trade${trades.length === 1 ? "" : "s"} loaded`);
+if (!trades.length) log("info", 'tip: press N to log a trade, or run "load --sample"');
