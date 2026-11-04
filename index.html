@@ -4,40 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Trading Journal</title>
-  <meta name="description" content="A trading terminal-style journal: log trades, track P&L, win rate, drawdown, and your daily P&L calendar.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
+  <meta name="description" content="Trade log with P&L, win rate, drawdown and a daily P&L calendar.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%2310131a'/><path d='M2 12 6 8l3 2 5-6' fill='none' stroke='%2322c55e' stroke-width='1.6'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Ticker tape -->
   <div class="tape" aria-label="Your tickers">
     <div class="tape-track" id="tape"></div>
   </div>
 
-  <!-- Header -->
   <header class="header">
-    <div class="logo">
-      <span class="logo-mark">TJ</span>
-      <div>
-        <h1>Trading Journal</h1>
-        <span class="logo-sub">Personal trade terminal</span>
-      </div>
-    </div>
+    <h1>Trading Journal</h1>
 
     <div class="clocks">
       <div class="clock">
         <span class="clock-label">NYSE</span>
         <span class="session" id="nyseStatus"><i></i><b>—</b></span>
         <span class="clock-time" id="nyTime">--:--:--</span>
-        <span class="clock-note" id="nyseNote">&nbsp;</span>
+        <span class="clock-note" id="nyseNote"></span>
       </div>
       <div class="clock">
         <span class="clock-label">JHB</span>
-        <span class="clock-time big" id="jhbTime">--:--:--</span>
-        <span class="clock-note" id="jhbDate">&nbsp;</span>
+        <span class="clock-time" id="jhbTime">--:--:--</span>
+        <span class="clock-note" id="jhbDate"></span>
       </div>
     </div>
 
@@ -49,48 +41,43 @@
   </header>
 
   <main class="terminal">
-    <!-- KPI strip -->
     <section class="kpis" aria-label="Performance summary">
-      <div class="kpi hero"><span class="k">Net P&amp;L</span><strong id="kNet">$0.00</strong><span class="s" id="kNetSub">No trades yet</span></div>
-      <div class="kpi"><span class="k">Win rate</span><strong id="kWin">—</strong><div class="winbar"><span id="kWinBar"></span></div><span class="s" id="kWinSub">0W · 0L</span></div>
-      <div class="kpi"><span class="k">Profit factor</span><strong id="kPF">—</strong><span class="s">Gross win ÷ gross loss</span></div>
-      <div class="kpi"><span class="k">Expectancy</span><strong id="kExp">—</strong><span class="s">Avg P&amp;L per trade</span></div>
-      <div class="kpi"><span class="k">Max drawdown</span><strong id="kDD">—</strong><span class="s" id="kDDSub">Peak to trough</span></div>
-      <div class="kpi"><span class="k">Avg win / loss</span><strong class="sm" id="kAvg">—</strong><span class="s" id="kAvgSub">Payoff —</span></div>
-      <div class="kpi"><span class="k">Streak</span><strong id="kStreak">—</strong><span class="s" id="kStreakSub">Current run</span></div>
+      <div class="kpi"><span class="k">Net P&amp;L</span><strong id="kNet" class="big">$0.00</strong><span class="s" id="kNetSub"></span></div>
+      <div class="kpi"><span class="k">Win rate</span><strong id="kWin">—</strong><span class="s" id="kWinSub"></span></div>
+      <div class="kpi"><span class="k">Profit factor</span><strong id="kPF">—</strong></div>
+      <div class="kpi"><span class="k">Expectancy</span><strong id="kExp">—</strong></div>
+      <div class="kpi"><span class="k">Max drawdown</span><strong id="kDD">—</strong></div>
+      <div class="kpi"><span class="k">Avg win / loss</span><strong class="sm" id="kAvg">—</strong><span class="s" id="kAvgSub"></span></div>
+      <div class="kpi"><span class="k">Streak</span><strong id="kStreak">—</strong></div>
     </section>
 
-    <!-- Chart + Order ticket -->
     <section class="row-a">
       <article class="panel chart-panel">
         <div class="ph">
-          <div class="ph-title"><span class="sym">EQUITY</span><span class="tf">ALL · per trade</span></div>
-          <div class="legend-line" id="chartLegend">Log trades to build your equity curve</div>
+          <h2>Equity</h2>
+          <div class="legend-line" id="chartLegend"></div>
         </div>
         <div class="chart-wrap" id="chartWrap">
           <svg id="chart" role="img" aria-label="Equity curve: cumulative profit and loss after each trade"></svg>
-          <div class="empty" id="chartEmpty">
-            <span>▁▂▃▅▇</span>
-            <p>No trades yet. Log one in the order ticket, or load sample data.</p>
-          </div>
+          <div class="empty" id="chartEmpty">No trades</div>
         </div>
       </article>
 
       <article class="panel ticket-panel">
-        <div class="ph"><div class="ph-title"><span class="sym">ORDER TICKET</span><span class="tf">Log a closed trade</span></div><span class="hotkeys"><kbd>B</kbd><kbd>S</kbd></span></div>
+        <div class="ph"><h2>Order entry</h2></div>
         <form id="tradeForm" autocomplete="off" class="ticket long">
           <div class="side-toggle" role="radiogroup" aria-label="Side">
-            <input type="radio" name="side" id="sideLong" value="long" checked><label for="sideLong" class="buy">BUY · LONG</label>
-            <input type="radio" name="side" id="sideShort" value="short"><label for="sideShort" class="sell">SELL · SHORT</label>
+            <input type="radio" name="side" id="sideLong" value="long" checked><label for="sideLong" class="buy">Buy</label>
+            <input type="radio" name="side" id="sideShort" value="short"><label for="sideShort" class="sell">Sell short</label>
           </div>
           <div class="f-row">
             <label class="f sym-f">Symbol<input type="text" name="ticker" placeholder="TSLA" required maxlength="10"></label>
             <label class="f">Date<input type="date" name="date" required></label>
           </div>
           <div class="f-row three">
-            <label class="f">Qty<input type="number" name="shares" min="0" step="any" required placeholder="100"></label>
-            <label class="f">Entry<input type="number" name="entry" min="0" step="any" required placeholder="250.00"></label>
-            <label class="f">Exit<input type="number" name="exit" min="0" step="any" required placeholder="255.50"></label>
+            <label class="f">Qty<input type="number" name="shares" min="0" step="any" required></label>
+            <label class="f">Entry<input type="number" name="entry" min="0" step="any" required></label>
+            <label class="f">Exit<input type="number" name="exit" min="0" step="any" required></label>
           </div>
           <div class="f-row">
             <label class="f">Fees<input type="number" name="fees" min="0" step="any" value="0"></label>
@@ -105,22 +92,21 @@
               </select>
             </label>
           </div>
-          <label class="f">Notes<textarea name="notes" rows="2" placeholder="What went right? What would you do differently?"></textarea></label>
-          <div class="est">
-            <div><span>Est. P&amp;L</span><strong id="estPnl">—</strong></div>
-            <div><span>Return</span><strong id="estRet">—</strong></div>
-            <div><span>Notional</span><strong id="estNotional">—</strong></div>
-          </div>
-          <button class="submit" type="submit" id="submitBtn">LOG LONG TRADE</button>
+          <label class="f">Notes<textarea name="notes" rows="2"></textarea></label>
+          <dl class="est">
+            <div><dt>P&amp;L</dt><dd id="estPnl">—</dd></div>
+            <div><dt>Return</dt><dd id="estRet">—</dd></div>
+            <div><dt>Notional</dt><dd id="estNotional">—</dd></div>
+          </dl>
+          <button class="submit" type="submit" id="submitBtn">Log buy</button>
         </form>
       </article>
     </section>
 
-    <!-- Calendar + Setups -->
     <section class="row-b">
       <article class="panel cal-panel">
         <div class="ph">
-          <div class="ph-title"><span class="sym">P&amp;L CALENDAR</span><span class="tf" id="calTotal">—</span></div>
+          <h2>Calendar <span class="ph-meta" id="calTotal"></span></h2>
           <div class="cal-nav">
             <button type="button" id="calPrev" aria-label="Previous month">‹</button>
             <span id="calMonth">—</span>
@@ -131,16 +117,15 @@
       </article>
 
       <article class="panel setup-panel">
-        <div class="ph"><div class="ph-title"><span class="sym">BY SETUP</span><span class="tf">Net P&amp;L</span></div></div>
+        <div class="ph"><h2>By setup</h2></div>
         <div class="setups" id="setups"></div>
       </article>
     </section>
 
-    <!-- Blotter -->
     <section class="panel blotter-panel">
       <div class="ph">
-        <div class="ph-title"><span class="sym">TRADE BLOTTER</span><span class="tf" id="tradeCount">0 trades</span></div>
-        <input type="search" id="search" placeholder="Filter symbol, setup, notes…  ( / )" aria-label="Filter trades">
+        <h2>Trades <span class="ph-meta" id="tradeCount"></span></h2>
+        <input type="search" id="search" placeholder="Filter" aria-label="Filter trades">
       </div>
       <div class="table-scroll">
         <table>
@@ -153,13 +138,13 @@
           </thead>
           <tbody id="tbody"></tbody>
         </table>
-        <p class="empty-row" id="tableEmpty">No trades yet.</p>
+        <p class="empty-row" id="tableEmpty">No trades</p>
       </div>
     </section>
 
     <footer class="foot">
-      <a href="../portfolio/index.html">← Back to portfolio</a>
-      <span>Data is stored in this browser only. Use Export to back it up. Market hours exclude exchange holidays.</span>
+      <a href="../portfolio/index.html">Portfolio</a>
+      <span>Stored locally in this browser</span>
     </footer>
   </main>
 

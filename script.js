@@ -50,14 +50,13 @@ function stats() {
 
 function renderKpis(s) {
   $("kNet").textContent = money(s.net, true);
-  $("kNet").className = tone(s.net);
-  $("kNetSub").textContent = s.n ? `${s.n} trade${s.n > 1 ? "s" : ""} · ${pct(s.list.reduce((a, t) => a + retOf(t), 0) / s.n)} avg ret` : "No trades yet";
+  $("kNet").className = "big " + tone(s.net);
+  $("kNetSub").textContent = s.n ? `${s.n} trade${s.n > 1 ? "s" : ""}` : "";
 
   const decided = s.wins.length + s.losses.length;
   const wr = decided ? (s.wins.length / decided) * 100 : 0;
   $("kWin").textContent = decided ? wr.toFixed(1) + "%" : "—";
-  $("kWinBar").style.width = wr + "%";
-  $("kWinSub").textContent = `${s.wins.length}W · ${s.losses.length}L`;
+  $("kWinSub").textContent = decided ? `${s.wins.length}W ${s.losses.length}L` : "";
 
   $("kPF").textContent = s.grossL ? (s.grossW / s.grossL).toFixed(2) : s.grossW ? "∞" : "—";
   $("kPF").className = s.grossL ? (s.grossW / s.grossL >= 1 ? "up" : "down") : "";
@@ -72,13 +71,12 @@ function renderKpis(s) {
   const avgW = s.wins.length ? s.grossW / s.wins.length : 0;
   const avgL = s.losses.length ? s.grossL / s.losses.length : 0;
   $("kAvg").innerHTML = s.n ? `<span class="up">${money(avgW, true)}</span> / <span class="down">${money(-avgL, true)}</span>` : "—";
-  $("kAvgSub").textContent = avgL ? `Payoff ${(avgW / avgL).toFixed(2)}R` : "Payoff —";
+  $("kAvgSub").textContent = avgL ? `Payoff ${(avgW / avgL).toFixed(2)}` : "";
 
   $("kStreak").textContent = s.streak ? `${Math.abs(s.streak)}${s.streak > 0 ? "W" : "L"}` : "—";
   $("kStreak").className = tone(s.streak);
-  $("kStreakSub").textContent = s.streak > 0 ? "Winning run" : s.streak < 0 ? "Losing run" : "Current run";
 
-  $("tradeCount").textContent = `${s.n} trade${s.n === 1 ? "" : "s"}`;
+  $("tradeCount").textContent = s.n ? String(s.n) : "";
 }
 
 // ============ Ticker tape ============
@@ -94,7 +92,7 @@ function renderTape() {
   const items = Object.entries(byTicker).sort((a, b) => b[1].net - a[1].net);
   const html = items.length
     ? items.map(([k, v]) => `<span class="tk"><b>${esc(k)}</b><span class="${tone(v.net)}">${v.net >= 0 ? "▲" : "▼"} ${money(v.net, true)}</span><span class="n">${v.n} trade${v.n > 1 ? "s" : ""}</span></span>`).join("")
-    : `<span class="tk muted">NO TRADES ON THE TAPE YET · LOG A TRADE IN THE ORDER TICKET TO GET STARTED</span>`;
+    : `<span class="tk muted">No trades</span>`;
   // Repeat enough times to fill wide screens, then double for a seamless loop
   const reps = Math.max(2, Math.ceil(12 / Math.max(1, items.length)));
   const half = html.repeat(reps);
@@ -126,7 +124,7 @@ function renderChart(s) {
   const svg = $("chart");
   svg.innerHTML = "";
   $("chartEmpty").hidden = s.n > 0;
-  if (!s.n) { chartState = null; $("chartLegend").textContent = "Log trades to build your equity curve"; return; }
+  if (!s.n) { chartState = null; $("chartLegend").textContent = ""; return; }
 
   const W = $("chartWrap").clientWidth, H = $("chartWrap").clientHeight;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -140,11 +138,11 @@ function renderChart(s) {
   const x = (i) => m.l + (i / (data.length - 1)) * (W - m.l - m.r);
   const y = (v) => m.t + (1 - (v - yMin) / (yMax - yMin || 1)) * (H - m.t - m.b);
   const color = cum >= 0 ? "var(--up)" : "var(--down)";
-  const hex = cum >= 0 ? "#1fd17a" : "#ff4d5e";
+  const hex = cum >= 0 ? "#22c55e" : "#ef4444";
 
   const defs = el("defs", {}, svg);
   const lg = el("linearGradient", { id: "eqfill", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
-  el("stop", { offset: 0, "stop-color": hex, "stop-opacity": 0.28 }, lg);
+  el("stop", { offset: 0, "stop-color": hex, "stop-opacity": 0.12 }, lg);
   el("stop", { offset: 1, "stop-color": hex, "stop-opacity": 0 }, lg);
 
   const grid = el("g", { class: "grid" }, svg);
@@ -200,7 +198,7 @@ function setLegend(d, s) {
   const L = $("chartLegend");
   if (!d) {
     const st = s || stats();
-    L.innerHTML = `<span>Equity <b class="${tone(st.net)}">${money(st.net, true)}</b></span><span>Trades <b>${st.n}</b></span><span>Max DD <b class="down">${money(st.maxDD, true)}</b></span>`;
+    L.innerHTML = st.n ? `<span>Last <b class="${tone(st.net)}">${money(st.net, true)}</b></span><span>Max DD <b>${money(st.maxDD, true)}</b></span>` : "";
     return;
   }
   L.innerHTML = `<span><b>#${d.i}</b> ${esc(d.t.date)} <b>${esc(d.t.ticker)}</b> ${d.t.side.toUpperCase()}</span><span>Trade <b class="${tone(d.p)}">${money(d.p, true)}</b></span><span>Equity <b class="${tone(d.cum)}">${money(d.cum, true)}</b></span>`;
@@ -247,7 +245,7 @@ function renderCalendar() {
   const greenDays = vals.filter((v) => v.net > 0).length, redDays = vals.filter((v) => v.net < 0).length;
 
   $("calMonth").textContent = calMonth.toLocaleDateString("en-US", { month: "short", year: "numeric" }).toUpperCase();
-  $("calTotal").innerHTML = vals.length ? `<span class="${tone(total)}">${money(total, true)}</span> · ${greenDays} green / ${redDays} red days` : "No trades this month";
+  $("calTotal").innerHTML = vals.length ? `<span class="${tone(total)}">${money(total, true)}</span> ${greenDays}/${redDays}` : "";
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const lead = (new Date(yr, mo, 1).getDay() + 6) % 7; // Monday-first
@@ -260,7 +258,7 @@ function renderCalendar() {
     let style = "", cls = "day";
     if (v) {
       const a = 0.08 + 0.42 * (Math.abs(v.net) / maxAbs);
-      style = `background: rgba(${v.net >= 0 ? "31, 209, 122" : "255, 77, 94"}, ${a.toFixed(2)})`;
+      style = `background: rgba(${v.net >= 0 ? "34, 197, 94" : "239, 68, 68"}, ${a.toFixed(2)})`;
       cls += v.net > 0 ? " pos" : v.net < 0 ? " neg" : "";
     }
     if (iso === todayStr) cls += " today";
@@ -283,7 +281,7 @@ function renderSetups() {
     by[t.setup].net += p; by[t.setup].n++; if (p > 0) by[t.setup].w++;
   });
   const rows = Object.entries(by).sort((a, b) => b[1].net - a[1].net);
-  if (!rows.length) { $("setups").innerHTML = '<p class="none">Your best and worst setups will show here.</p>'; return; }
+  if (!rows.length) { $("setups").innerHTML = '<p class="none">No trades</p>'; return; }
   const maxAbs = Math.max(...rows.map(([, v]) => Math.abs(v.net)), 1);
   $("setups").innerHTML = rows.map(([name, v]) => `
     <div class="setup-row" title="${esc(name)}: ${v.n} trades, ${Math.round((v.w / v.n) * 100)}% win rate">
@@ -315,7 +313,7 @@ function renderTable() {
     </tr>`;
   }).join("");
   $("tableEmpty").hidden = rows.length > 0;
-  $("tableEmpty").textContent = trades.length ? "No trades match your filter." : "No trades yet.";
+  $("tableEmpty").textContent = trades.length ? "No matches" : "No trades";
 }
 
 function renderAll() {
@@ -347,7 +345,7 @@ function updateTicket() {
   const t = readForm();
   form.classList.toggle("long", t.side !== "short");
   form.classList.toggle("short", t.side === "short");
-  $("submitBtn").textContent = t.side === "short" ? "LOG SHORT TRADE" : "LOG LONG TRADE";
+  $("submitBtn").textContent = t.side === "short" ? "Log short" : "Log buy";
   const ok = [t.shares, t.entry, t.exit].every(Number.isFinite) && t.entry > 0;
   const p = ok ? pnlOf(t) : 0;
   $("estPnl").textContent = ok ? money(p, true) : "—";
