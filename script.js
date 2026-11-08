@@ -517,6 +517,10 @@ function hideAuto(id, hide) {
   try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...s])); } catch { /* storage unavailable */ }
 }
 function autopilotState() { try { return JSON.parse(localStorage.getItem(AP_STORE)) || null; } catch { return null; } }
+// The journal's own copy of the paper keys, for when it can't see Autopilot's storage
+// (e.g. an iPhone home-screen app, which gets storage of its own).
+const OWN_KEYS = "tj.alpaca.v1";
+function ownKeys() { try { return JSON.parse(localStorage.getItem(OWN_KEYS)) || null; } catch { return null; } }
 const dateIn = (ms, tz) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
 const timeIn = (ms, tz) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 
@@ -598,20 +602,18 @@ async function autoSync(manual) {
   const ap = autopilotState();
   const fresh = {}; // source -> trades; a source that fails keeps what it had
   const msgs = [];
-  if (!ap) {
-    msgs.push("Autopilot not found in this browser");
+  if (ap) fresh["autopilot-sim"] = simTrades(ap);
+  const own = ownKeys();
+  let k = ap?.settings?.alpacaKey, s = ap?.settings?.alpacaSecret;
+  if (!(k && s) && own?.key && own?.secret) { k = own.key; s = own.secret; }
+  if (k && s) {
+    try {
+      const [fills, plans] = await Promise.all([alpacaFills(k, s), claudePlans()]);
+      fresh.alpaca = roundTrips(fills, plans);
+      msgs.push(`Alpaca ✓ ${fresh.alpaca.length} trade${fresh.alpaca.length === 1 ? "" : "s"}`);
+    } catch (e) { msgs.push(`Alpaca: ${e.message || "offline"}`); }
   } else {
-    fresh["autopilot-sim"] = simTrades(ap);
-    const { alpacaKey: k, alpacaSecret: s } = ap.settings || {};
-    if (k && s) {
-      try {
-        const [fills, plans] = await Promise.all([alpacaFills(k, s), claudePlans()]);
-        fresh.alpaca = roundTrips(fills, plans);
-        msgs.push(`Alpaca ✓ ${fresh.alpaca.length} trade${fresh.alpaca.length === 1 ? "" : "s"}`);
-      } catch (e) { msgs.push(`Alpaca: ${e.message || "offline"}`); }
-    } else {
-      msgs.push("No Alpaca keys in Autopilot");
-    }
+    msgs.push(ap ? "No Alpaca keys in Autopilot. Tap Connect Alpaca" : "Not connected. Tap Connect Alpaca");
   }
   const hidden = hiddenSet();
   const before = JSON.stringify(trades);
@@ -626,6 +628,31 @@ async function autoSync(manual) {
 }
 
 $("syncBtn").addEventListener("click", () => autoSync(true));
+
+const connectBox = $("connectBox");
+function showConnect(open) {
+  connectBox.hidden = !open;
+  $("connectBtn").setAttribute("aria-expanded", String(open));
+  $("connectBtn").textContent = ownKeys() ? "Alpaca keys ✓" : "Connect Alpaca";
+}
+$("connectBtn").addEventListener("click", () => showConnect(connectBox.hidden));
+connectBox.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const key = connectBox.key.value.trim(), secret = connectBox.secret.value.trim();
+  if (!key || !secret) return;
+  try { localStorage.setItem(OWN_KEYS, JSON.stringify({ key, secret })); } catch { toast("This browser won't save the keys."); return; }
+  connectBox.reset();
+  showConnect(false);
+  autoSync(true);
+});
+$("disconnectBtn").addEventListener("click", () => {
+  try { localStorage.removeItem(OWN_KEYS); } catch { /* storage unavailable */ }
+  connectBox.reset();
+  showConnect(false);
+  toast("Keys removed from this device");
+  autoSync();
+});
+showConnect(false);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) autoSync(); });
 setInterval(() => { if (!document.hidden) autoSync(); }, 60000);
 

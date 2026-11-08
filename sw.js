@@ -1,6 +1,6 @@
 // Offline support for Trading Journal.
 // Network first: when online you always get the latest version; when offline the last saved copy opens.
-const CACHE = "trading-journal-v2";
+const CACHE = "trading-journal-v3";
 const ASSETS = ["./", "./index.html", "./style.css", "./script.js", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {

@@ -43,11 +43,22 @@
     <div class="actions">
       <span class="sync" id="syncStatus" role="status">Auto-sync…</span>
       <button class="tbtn" id="syncBtn" type="button">Sync</button>
+      <button class="tbtn" id="connectBtn" type="button" aria-expanded="false" aria-controls="connectBox">Connect Alpaca</button>
       <button class="tbtn" id="sampleBtn" type="button">Sample data</button>
       <button class="tbtn" id="exportBtn" type="button">Export</button>
       <label class="tbtn" for="importFile">Import<input type="file" id="importFile" accept="application/json" hidden></label>
     </div>
   </header>
+
+  <form class="connect" id="connectBox" autocomplete="off" hidden>
+    <p>Paste your Alpaca <b>paper</b> keys (the same ones as in Autopilot). They stay in this app on this device only. The journal only reads your fills. It can't place orders.</p>
+    <label class="f">API key ID<input type="password" name="key" required autocomplete="off" spellcheck="false" autocapitalize="off"></label>
+    <label class="f">Secret key<input type="password" name="secret" required autocomplete="off" spellcheck="false" autocapitalize="off"></label>
+    <div class="connect-actions">
+      <button class="tbtn" type="submit">Save and sync</button>
+      <button class="tbtn" type="button" id="disconnectBtn">Remove keys</button>
+    </div>
+  </form>
 
   <main class="terminal">
     <section class="kpis" aria-label="Performance summary">
