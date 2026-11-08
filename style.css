@@ -51,7 +51,10 @@ h1, h2 { margin: 0; font-weight: 600; }
 .session.open { color: var(--up); } .session.open i { background: var(--up); }
 .session.ext { color: var(--accent); } .session.ext i { background: var(--accent); }
 .session.closed { color: var(--text-3); }
-.actions { display: flex; gap: 4px; }
+.actions { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.sync { font: 11px var(--mono); color: var(--text-3); margin-right: 6px; max-width: 100%; }
+.sync.ok { color: var(--up); }
+.sync.warn { color: var(--accent); }
 .tbtn {
   font: 12px var(--sans); color: var(--text-2); padding: 5px 10px; border-radius: 2px;
   border: 1px solid var(--line-2); background: var(--panel-2); cursor: pointer;

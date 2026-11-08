@@ -26,7 +26,7 @@ const pct = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(2) +
 const tone = (v) => (v > 0 ? "up" : v < 0 ? "down" : "");
 const pnlOf = (t) => (t.side === "short" ? t.entry - t.exit : t.exit - t.entry) * t.shares - (t.fees || 0);
 const retOf = (t) => { const n = t.entry * t.shares; return n ? (pnlOf(t) / n) * 100 : 0; };
-const sorted = () => [...trades].sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+const sorted = () => [...trades].sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? a.id) - (b.time ?? b.id));
 
 // ============ Stats ============
 function stats() {
@@ -379,8 +379,9 @@ $("tbody").addEventListener("click", (e) => {
   const idx = trades.findIndex((t) => String(t.id) === btn.dataset.id);
   if (idx < 0) return;
   const [removed] = trades.splice(idx, 1);
+  if (removed.auto) hideAuto(removed.id, true); // keep auto-synced trades deleted on the next sync
   save(); renderAll();
-  toast(`Deleted ${removed.ticker} trade`, () => { trades.push(removed); save(); renderAll(); });
+  toast(`Deleted ${removed.ticker} trade`, () => { if (removed.auto) hideAuto(removed.id, false); trades.push(removed); save(); renderAll(); });
 });
 
 $("search").addEventListener("input", renderTable);
@@ -500,5 +501,134 @@ document.addEventListener("keydown", (e) => {
 let rz;
 window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => renderChart(stats()), 150); });
 
+// ============ Auto-sync from Autopilot ============
+// The journal and the Autopilot app are served from the same site (salmaanh30.github.io, or localhost:5500),
+// so they share this browser's storage. The journal reads Autopilot's saved paper keys and its simulated
+// trades from there. It only ever READS from Alpaca (fills); it can't place, change or cancel orders.
+const AP_STORE = "autopilot.v1";
+const HIDDEN_KEY = "tj.hidden.v1";
+const ALPACA_PAPER = "https://paper-api.alpaca.markets"; // paper only
+let syncing = false;
+
+function hiddenSet() { try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY)) || []); } catch { return new Set(); } }
+function hideAuto(id, hide) {
+  const s = hiddenSet();
+  hide ? s.add(id) : s.delete(id);
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...s])); } catch { /* storage unavailable */ }
+}
+function autopilotState() { try { return JSON.parse(localStorage.getItem(AP_STORE)) || null; } catch { return null; } }
+const dateIn = (ms, tz) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+const timeIn = (ms, tz) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
+
+// Autopilot's own simulated crypto trades
+function simTrades(ap) {
+  return (ap?.trades || []).filter((t) => t && t.closed && Number.isFinite(t.entry) && Number.isFinite(t.exit) && t.qty > 0).map((t) => ({
+    id: `ap-sim:${t.sym}:${t.closed}`, auto: "autopilot-sim", time: t.closed,
+    date: dateIn(t.closed, "Africa/Johannesburg"), ticker: t.sym, side: "long",
+    shares: t.qty, entry: t.entry, exit: t.exit, fees: t.fees || 0,
+    setup: "Autopilot EMA cross (sim)", notes: `Auto · simulated · ${t.why || ""}`.trim(),
+  }));
+}
+
+// All Alpaca paper fills, oldest first
+async function alpacaFills(key, secret) {
+  const headers = { "APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret };
+  const out = [];
+  let token = "";
+  for (let page = 0; page < 20; page++) {
+    const url = `${ALPACA_PAPER}/v2/account/activities/FILL?direction=asc&page_size=100${token ? "&page_token=" + encodeURIComponent(token) : ""}`;
+    const r = await fetch(url, { headers });
+    if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? "keys rejected" : "HTTP " + r.status);
+    const batch = await r.json();
+    if (!Array.isArray(batch) || !batch.length) break;
+    out.push(...batch);
+    if (batch.length < 100) break;
+    token = batch[batch.length - 1].id;
+  }
+  return out;
+}
+
+// Pair buys and sells (first in, first out) into finished round trips.
+// Partial fills of the same entry and exit orders are merged into one trade.
+function roundTrips(fills, plans) {
+  const lots = {}, trips = {};
+  for (const f of fills) {
+    const sym = f.symbol, px = parseFloat(f.price), ms = Date.parse(f.transaction_time);
+    let qty = parseFloat(f.qty);
+    if (!sym || !(qty > 0) || !Number.isFinite(px)) continue;
+    const dir = f.side === "buy" ? "long" : "short";
+    const q = (lots[sym] = lots[sym] || []);
+    while (qty > 1e-9 && q.length && q[0].side !== dir) { // this fill closes earlier opposite lots
+      const lot = q[0], n = Math.min(qty, lot.qty);
+      const k = `alp:${lot.order}:${f.order_id}`;
+      const t = (trips[k] = trips[k] || { id: k, sym, side: lot.side, shares: 0, inCost: 0, outCost: 0, opened: lot.time, closed: ms });
+      t.shares += n; t.inCost += n * lot.price; t.outCost += n * px; t.closed = Math.max(t.closed, ms);
+      lot.qty -= n; qty -= n;
+      if (lot.qty <= 1e-9) q.shift();
+    }
+    if (qty > 1e-9) q.push({ side: dir, qty, price: px, order: f.order_id, time: ms });
+  }
+  return Object.values(trips).map((t) => {
+    const plan = plans.find((p) => p && p.symbol === t.sym);
+    const planNote = plan && Number.isFinite(plan.stop) && Number.isFinite(plan.target) ? ` · plan stop ${plan.stop} / target ${plan.target}` : "";
+    return {
+      id: t.id, auto: "alpaca", time: t.closed,
+      date: dateIn(t.closed, "America/New_York"), ticker: t.sym, side: t.side,
+      shares: +t.shares.toFixed(6), entry: +(t.inCost / t.shares).toFixed(4), exit: +(t.outCost / t.shares).toFixed(4), fees: 0,
+      setup: plan?.setup ? (/opening|orb/i.test(plan.setup) ? "Opening range breakout" : plan.setup) : "Opening range breakout",
+      notes: `Auto · Alpaca paper · in ${timeIn(t.opened, "America/New_York")} out ${timeIn(t.closed, "America/New_York")} ET${planNote}`,
+    };
+  });
+}
+
+async function claudePlans() {
+  try { return (await (await fetch("../trading-bot/signals.json?t=" + Date.now(), { cache: "no-store" })).json()).plans || []; } catch { return []; }
+}
+
+function setSync(text, state) {
+  const s = $("syncStatus");
+  if (!s) return;
+  s.textContent = text;
+  s.className = "sync " + (state || "");
+}
+
+async function autoSync(manual) {
+  if (syncing) return;
+  syncing = true;
+  const ap = autopilotState();
+  const fresh = {}; // source -> trades; a source that fails keeps what it had
+  const msgs = [];
+  if (!ap) {
+    msgs.push("Autopilot not found in this browser");
+  } else {
+    fresh["autopilot-sim"] = simTrades(ap);
+    const { alpacaKey: k, alpacaSecret: s } = ap.settings || {};
+    if (k && s) {
+      try {
+        const [fills, plans] = await Promise.all([alpacaFills(k, s), claudePlans()]);
+        fresh.alpaca = roundTrips(fills, plans);
+        msgs.push(`Alpaca ✓ ${fresh.alpaca.length} trade${fresh.alpaca.length === 1 ? "" : "s"}`);
+      } catch (e) { msgs.push(`Alpaca: ${e.message || "offline"}`); }
+    } else {
+      msgs.push("No Alpaca keys in Autopilot");
+    }
+  }
+  const hidden = hiddenSet();
+  const before = JSON.stringify(trades);
+  for (const [src, list] of Object.entries(fresh)) {
+    trades = trades.filter((t) => t.auto !== src).concat(list.filter((t) => !hidden.has(t.id)));
+  }
+  if (JSON.stringify(trades) !== before) { save(); calMonth = null; renderAll(); }
+  const ok = Boolean(fresh.alpaca);
+  setSync(`Auto-sync · ${msgs.join(" · ")} · ${timeIn(Date.now(), "Africa/Johannesburg")}`, ok ? "ok" : "warn");
+  if (manual) toast("Synced");
+  syncing = false;
+}
+
+$("syncBtn").addEventListener("click", () => autoSync(true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) autoSync(); });
+setInterval(() => { if (!document.hidden) autoSync(); }, 60000);
+
 updateTicket();
 renderAll();
+autoSync();
